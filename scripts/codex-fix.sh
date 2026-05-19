@@ -52,7 +52,11 @@ NODE="/Users/uncle/.nvm/versions/node/v22.22.2/bin/node"
 "$REAL" --use-angle=metal --remote-debugging-port=9222 "$@" &
 PID=$!
 
-"$NODE" "$INJECT" 9222 2>/dev/null &
+if [ "$CODEX_INJECT_DEBUG" = "1" ]; then
+  CODEX_INJECT_DEBUG=1 "$NODE" "$INJECT" 9222 >>/tmp/codex-inject-debug.log 2>&1 &
+else
+  "$NODE" "$INJECT" 9222 >/dev/null 2>&1 &
+fi
 
 wait $PID
 WRAPPER_EOF
@@ -60,18 +64,38 @@ chmod +x "$WRAPPER"
 
 cat > "$INJECT" << 'INJECT_EOF'
 const PORT = process.argv[2] || '9222';
+const DEBUG = process.env.CODEX_INJECT_DEBUG === '1';
 const CSS = '*{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}';
+const REINJECT_INTERVAL_MS = 2000;
 
-function injectNow(wsUrl) {
+const PAYLOAD = `(function(){
+  var CSS = ${JSON.stringify(CSS)};
+  function ensure() {
+    if (document.getElementById('__gfx_')) return;
+    var s = document.createElement('style');
+    s.id = '__gfx_';
+    s.textContent = CSS;
+    (document.head || document.documentElement || document).appendChild(s);
+  }
+  ensure();
+  try { if (window.__gfx_observer) window.__gfx_observer.disconnect(); } catch(e){}
+  window.__gfx_observer = new MutationObserver(ensure);
+  try { window.__gfx_observer.observe(document, {childList: true, subtree: true}); } catch(e){}
+  return !!document.getElementById('__gfx_');
+})()`;
+
+const log = DEBUG
+  ? (msg) => console.log(`[${new Date().toISOString()}] ${msg}`)
+  : () => {};
+
+function evalOnce(wsUrl) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl);
     const EVAL_ID = 1;
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        id: EVAL_ID, method: 'Runtime.evaluate', params: {
-          expression: `(function(){var s=document.getElementById('__gfx_');if(!s){s=document.createElement('style');s.id='__gfx_';s.textContent=${JSON.stringify(CSS)};document.head.appendChild(s);return'ok'}return'already'})()`,
-          returnByValue: true
-        }
+        id: EVAL_ID, method: 'Runtime.evaluate',
+        params: { expression: PAYLOAD, returnByValue: true }
       }));
     };
     ws.onmessage = (e) => {
@@ -79,7 +103,7 @@ function injectNow(wsUrl) {
         const m = JSON.parse(e.data);
         if (m.id !== EVAL_ID) return;
         if (m.error) { ws.close(); reject(new Error(JSON.stringify(m.error))); return; }
-        ws.close(); resolve(true);
+        ws.close(); resolve(m.result?.result?.value);
       } catch {}
     };
     ws.onerror = () => { ws.close(); reject(new Error('ws error')); };
@@ -87,21 +111,41 @@ function injectNow(wsUrl) {
   });
 }
 
+async function findPageWs() {
+  const res = await fetch(`http://localhost:${PORT}/json/list`);
+  const targets = await res.json();
+  const page = targets.find(t => t.type === 'page' && t.url?.includes('index.html'));
+  return page?.webSocketDebuggerUrl;
+}
+
 (async () => {
-  for (let i = 0; i < 300; i++) {
+  log(`START pid=${process.pid} port=${PORT} interval=${REINJECT_INTERVAL_MS}ms debug=${DEBUG}`);
+  let wsUrl;
+  for (let i = 0; i < 600; i++) {
     try {
-      const res = await fetch(`http://localhost:${PORT}/json/list`);
-      const targets = await res.json();
-      const page = targets.find(t => t.type === 'page' && t.url?.includes('index.html'));
-      if (page) {
-        await injectNow(page.webSocketDebuggerUrl);
-        process.exit(0);
-      }
-    } catch {}
+      wsUrl = await findPageWs();
+      if (wsUrl) { log(`page ready after ${i * 100}ms`); break; }
+    } catch (e) { if (i % 20 === 0) log(`waiting for CDP: ${e.message}`); }
     await new Promise(r => setTimeout(r, 100));
   }
-  process.exit(1);
-})();
+  if (!wsUrl) { log(`TIMEOUT no page after 60s`); process.exit(1); }
+
+  let count = 0, fails = 0;
+  while (true) {
+    try {
+      const url = (await findPageWs()) || wsUrl;
+      const ok = await evalOnce(url);
+      count++;
+      if (count <= 3 || count % 30 === 0) log(`reinject #${count} ok=${ok}`);
+      fails = 0;
+    } catch (e) {
+      fails++;
+      if (fails <= 3 || fails % 30 === 0) log(`reinject fail #${fails}: ${e.message}`);
+      if (fails > 600) { log(`TOO MANY FAILS — exiting`); process.exit(2); }
+    }
+    await new Promise(r => setTimeout(r, REINJECT_INTERVAL_MS));
+  }
+})().catch(e => { log(`FATAL ${e.message}`); process.exit(3); });
 INJECT_EOF
 
 xattr -cr "$APP" 2>/dev/null
