@@ -109,16 +109,18 @@ codex-gpu-fix/
 
 ## 安装
 
+> Codex 是用户态应用，`/Applications/Codex.app` 由当前用户拥有，**所有步骤都不需要 sudo**。
+
 ```bash
 # 1. 包装真实二进制 + 部署注入器
-sudo mv /Applications/Codex.app/Contents/MacOS/Codex /Applications/Codex.app/Contents/MacOS/Codex-real
-sudo cp scripts/codex-wrapper.sh /Applications/Codex.app/Contents/MacOS/Codex
-sudo cp scripts/codex-inject.mjs /Applications/Codex.app/Contents/Resources/codex-inject.mjs
-sudo chmod +x /Applications/Codex.app/Contents/MacOS/Codex
+mv /Applications/Codex.app/Contents/MacOS/Codex /Applications/Codex.app/Contents/MacOS/Codex-real
+cp scripts/codex-wrapper.sh /Applications/Codex.app/Contents/MacOS/Codex
+cp scripts/codex-inject.mjs /Applications/Codex.app/Contents/Resources/codex-inject.mjs
+chmod +x /Applications/Codex.app/Contents/MacOS/Codex
 
 # 2. ad-hoc 重签名（不能用 --remove-signature，macOS 13+ 会拒绝启动）
-sudo xattr -cr /Applications/Codex.app
-sudo codesign --force --deep --sign - /Applications/Codex.app
+xattr -cr /Applications/Codex.app
+codesign --force --deep --sign - /Applications/Codex.app
 
 # 3. 安装自动重应用脚本（Codex 自动更新后会触发）
 mkdir -p ~/.local/bin
