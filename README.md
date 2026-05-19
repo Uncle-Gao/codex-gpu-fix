@@ -39,7 +39,7 @@ Intel integrated GPU + macOS 13 + Electron IOSurface IPC — when all three coin
 
 We now provide a standalone **"Codex-Fix"** app that launches the official Codex with the fix injected.
 
-- **No Re-signing Required**: Does not modify the official app bundle.
+- **No Re-signing Required**: Does not modify the official app bundle. Avoids issues where browser control might become unavailable after re-signing the official package.
 - **Survives Updates**: Works forever even after Codex auto-updates.
 - **Stealth Mode**: Runs in the background with no Dock icon.
 - **GPU Optimized**: Keeps hardware acceleration and Metal enabled.
@@ -160,7 +160,7 @@ Intel 核显 + macOS 13 + Electron IOSurface IPC → 三板斧凑齐就触发。
 
 我们现在提供一个独立的 **"Codex-Fix"** 应用程序，它会启动官方 Codex 并自动注入修复补丁。
 
-- **无需重新签名**：不修改官方应用包。
+- **无需重新签名**：不修改官方应用包。避免因为重新签名官方安装包后有可能会导致的浏览器控制不可用。
 - **抗更新**：Codex 自动更新后补丁依然有效。
 - **隐形模式**：在后台运行，不在 Dock 栏显示图标。
 - **GPU 优化**：保留硬件加速和 Metal 开启。
