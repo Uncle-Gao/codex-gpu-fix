@@ -89,7 +89,6 @@ tail -f /tmp/codex-external-fix.log
 codex-gpu-fix/
 ├── Codex-Fix-Universal.dmg            # Final distributable app
 ├── README.md                          # this file
-├── GEMINI.md                          # project guide for AI assistants
 ├── scripts/
 │   ├── codex-inject.mjs               # CDP persistent injector
 │   ├── external-launcher.sh           # Core launch logic
@@ -211,7 +210,6 @@ Intel GPU 上 `border-radius` 圆角渲染质量略降。原因：`backdrop-filt
 codex-gpu-fix/
 ├── Codex-Fix-Universal.dmg            # 最终发布的安装包
 ├── README.md                          # 本文档
-├── GEMINI.md                          # AI 指导文档
 ├── scripts/
 │   ├── codex-inject.mjs               # CDP 持续注入器
 │   ├── external-launcher.sh           # 核心启动逻辑
