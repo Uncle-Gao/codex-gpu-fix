@@ -65,11 +65,10 @@ const CSS = '*{backdrop-filter:none!important;-webkit-backdrop-filter:none!impor
 function injectNow(wsUrl) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl);
-    let id = 1;
+    const EVAL_ID = 1;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ id: id++, method: 'Runtime.enable' }));
       ws.send(JSON.stringify({
-        id: id++, method: 'Runtime.evaluate', params: {
+        id: EVAL_ID, method: 'Runtime.evaluate', params: {
           expression: `(function(){var s=document.getElementById('__gfx_');if(!s){s=document.createElement('style');s.id='__gfx_';s.textContent=${JSON.stringify(CSS)};document.head.appendChild(s);return'ok'}return'already'})()`,
           returnByValue: true
         }
@@ -78,8 +77,9 @@ function injectNow(wsUrl) {
     ws.onmessage = (e) => {
       try {
         const m = JSON.parse(e.data);
-        if (m.id && m.result && !m.error) { ws.close(); resolve(true); }
-        if (m.error) { ws.close(); reject(new Error(JSON.stringify(m.error))); }
+        if (m.id !== EVAL_ID) return;
+        if (m.error) { ws.close(); reject(new Error(JSON.stringify(m.error))); return; }
+        ws.close(); resolve(true);
       } catch {}
     };
     ws.onerror = () => { ws.close(); reject(new Error('ws error')); };
