@@ -1,6 +1,6 @@
 # Codex GPU 渲染修复
 
-修复 OpenAI Codex 桌面端在 Intel Mac 上的 GPU 渲染 bug。通过 CDP 运行时注入禁用 `backdrop-filter`，在不修改 app.asar（受 Electron AsarIntegrity 保护）且不影响性能的前提下消除透明/模糊区域。
+修复 OpenAI Codex 桌面端在 Intel Mac 上的 GPU 渲染 bug（白色的透明/模糊区域）。通过 CDP 运行时注入禁用 `backdrop-filter`，在不修改 app.asar（受 Electron AsarIntegrity 保护）且不影响性能的前提下消除透明/模糊区域。
 
 Fix a GPU rendering bug in the OpenAI Codex desktop app on Intel Macs. Uses CDP runtime injection to disable `backdrop-filter` — eliminating transparent/blurry areas without modifying app.asar (protected by Electron AsarIntegrity) and with zero performance impact.
 
